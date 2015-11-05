@@ -25,8 +25,8 @@ addr = (host,port)
 UDPSock = socket(AF_INET,SOCK_DGRAM)
 
 # Send messages
-def send2Server(data):
-    if(UDPSock.sendto(pickle.dumps(data),addr)):
+def send2Server():
+    if(UDPSock.sendto(pickle.dumps(np.random.random(5000)),addr)):
         print "Sending message"
         # Close socket
 		#UDPSock.close()
@@ -46,5 +46,4 @@ def read():
 
 if __name__ == "__main__":
 	read()
-	send2Server(a)
-	print a
+	send2Server()
