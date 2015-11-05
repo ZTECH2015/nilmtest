@@ -2,7 +2,7 @@ import numpy as np
 import time
 from socket import *
 import pickle
-import Adafruit_BBIO.GPIO as GPIO
+import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
 
 # Set up zooming coefficient
@@ -31,7 +31,7 @@ def send2Server():
         # Close socket
 		#UDPSock.close()
 
-def read():
+def readUI():
 	capture = adc.Capture()
 	capture.start()
 	while(1):
@@ -43,7 +43,17 @@ def read():
 		data[:,1] = (data*1.8-offset) * current_zoom/resist
 		data[5001]=(start, time.time())
 		print data
+def readEMI():
+	UART.setup("UART1")
+	ser = serial.Serial(port = "/dev/ttyO1", baudrate=1152000)
+	ser.close()
+	ser.open()
+	while(1):
+		if ser.isOpen():
+			data = ser.readline()
+			data = np.fromstring(chr(data), dtype = np.float32)
+		print data
 
 if __name__ == "__main__":
-	read()
+	readUI()
 	send2Server()
