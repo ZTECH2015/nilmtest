@@ -1,10 +1,9 @@
-import Adafruit_BBIO.ADC as ADC
 import numpy as np
 import time
 from socket import *
 import pickle
-from Adafruit_BBIO.SPI import SPI
 import Adafruit_BBIO.GPIO as GPIO
+import beaglebone_pru_adc as adc
 
 # Set up zooming coefficient
 offset = 5*4.7*2/51.7
@@ -32,27 +31,20 @@ def send2Server(data):
         # Close socket
 		#UDPSock.close()
 
-
-def readUI():
-	voltage = (ADC.read("P9_40")*1.8 - offset) * voltage_zoom
-	#voltage = ADC.read("P9_40")
-	current = (ADC.read("P9_39")*1.8 - offset) * current_zoom/resist
-	#current = ADC.read("P9_39")
-	return np.append(voltage, current)
-
-def readUIc(num):
-	count = 0
-	data = [readUI()]
-	while count<num:
-		data = np.concatenate((data,[readUI()]),axis=0)
-		count = count + 1
-	return data
+def read():
+	capture = adc.Capture()
+	capture.start()
+	while(1):
+		data = np.empty([5001,2])
+		start = time.time()
+		for i in range(5000):
+			data[i] = capture.values[:2]
+		data[:,0] = (data*1.8-offset) * voltage_zoom
+		data[:,1] = (data*1.8-offset) * current_zoom/resist
+		data[5001]=(start, time.time())
+		print data
 
 if __name__ == "__main__":
-	print ("starting to read Voltage and Current")
-	start = time.time()
-	ADC.setup()
-	a = readUIc(1024)
-	print time.time()-start
+	read()
 	send2Server(a)
 	print a
