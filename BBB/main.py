@@ -4,6 +4,7 @@ from socket import *
 import pickle
 import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
+import serial
 
 # Set up zooming coefficient
 offset = 5*4.7*2/51.7
@@ -54,6 +55,5 @@ def readEMI():
 			data = np.fromstring(chr(data), dtype = np.float32)
 		print data
 
-if __name__ == "__main__":
-	readUI()
-	send2Server()
+readUI()
+#send2Server()
