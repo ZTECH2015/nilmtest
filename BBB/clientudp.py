@@ -17,7 +17,7 @@ print ("\n",def_msg)
 #a = array('i',[1,3,2])
 # Send messages
 while 1:
-    if(UDPSock.sendto(pickle.dumps(np.random.random(2**10)),addr)):
+    if(UDPSock.sendto(pickle.dumps(np.random.random(2**12)),addr)):
         print ("Sending message")
     time.sleep(1)
 
