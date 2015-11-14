@@ -51,16 +51,16 @@ def readUI(UI_in):
 	capture = adc.Capture()
 	capture.start()
 	while(1):
-		start = time.time()
 		data = np.empty([num_ui+1,2])
 		start = time.time()
 		for i in range(num_ui):
 			data[i] = capture.values[:2]
+			time.sleep(0.0001)
 		#print data, offset, voltage_zoom, data[:,0]
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
-		#data[num_ui]=(start, time.time())
+		data[num_ui]=(start, time.time())
 		#print data
 		UI_in.send(data)
 		#print(time.time() - start)
@@ -69,25 +69,23 @@ def sendUI(UIpipe):
 	UI_in.close()
 	while 1:
 		start0 = time.time()
-		data = UI_out.recv()
-		start = data[num_ui,0]
-		end = data[num_ui,1]
-		u_data = (data[:num_ui,0].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * voltage_zoom
-		i_data = (data[:num_ui,1].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * current_zoom
-		data = np.vstack((np.vstack((u_data, i_data)).transpose(),[start,end]))
+		# start = data[num_ui,0]
+		# end = data[num_ui,1]
+		# u_data = (data[:num_ui,0].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * voltage_zoom
+		# i_data = (data[:num_ui,1].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * current_zoom
+		# data = np.vstack((np.vstack((u_data, i_data)).transpose(),[start,end]))
 		#print data
-		send2Server_ui(data)
+		send2Server_ui(UI_out.recv())
 		print("send UI consume:", time.time()-start0)
 
-def readEMI(EMI_in):
+def read_sendEMI():
 	UART.setup("UART1")
 	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800)
 	ser.close()
 	ser.open()
 	if ser.isOpen():
 		while(1):
-		
-			EMI_in.send(ser.read(4096))
+			send2Server_emi(ser.read(4096))
 
 def sendEMI(EMIpipe):
 	EMI_out, EMI_in = EMIpipe
@@ -107,7 +105,7 @@ p_readui = Process(target = readUI, args = (UI_in,))
 p_readui.start()
 
 #EMI_out, EMI_in = Pipe()
-#p_sendemi = Process(target = sendEMI, args = ((EMI_out, EMI_in),))
-#p_sendemi.start()
+read_sendEMI = Process(target = sendEMI)
+read_sendEMI.start()
 #p_reademi = Process(target = readEMI, args = (EMI_in,))
 #p_reademi.start()
