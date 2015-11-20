@@ -6,6 +6,8 @@ import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
 import serial
 from multiprocessing import Process, Pipe
+from timeout import timeout
+
 
 # Set up zooming coefficient
 offset = 5*4.7*2/51.7
@@ -29,10 +31,14 @@ addr_emi = (host_qb,port_emi)
 # Create socket
 UDPSock = socket(AF_INET,SOCK_DGRAM)
 
+s = socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((host, port_ui))
 #the number of sample UI
 div_ui = 3
 num_ui = 400*div_ui
 
+def send2Server(data):
+	s.send(pickle.dumps(data))
 
 # Send messages
 def send2Server_ui(data):
@@ -88,10 +94,17 @@ def read_sendEMI():
 		while(1):
 			#print "writing uart"
 			start = time.time()
-			ser.write('1')
+
+			@timeout
+			readUart(ser)
+			#ser.write('1')
 			#print "finish writing"
-			send2Server_emi(ser.read(4096))
+			#send2Server_emi(ser.read(4096))
 			print("send EMI consume:", time.time()-start)
+
+def readUart(ser):
+	ser.write('1')
+	send2Server_emi(ser.read(4096))
 
 def sendEMI(EMIpipe):
 	EMI_out, EMI_in = EMIpipe
