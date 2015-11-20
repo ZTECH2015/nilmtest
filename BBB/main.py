@@ -29,36 +29,29 @@ addr_ui = (host_qb,port_ui)
 addr_emi = (host_qb,port_emi)
 
 # Create socket
-UDPSock = socket(AF_INET,SOCK_DGRAM)
+#UDPSock = socket(AF_INET,SOCK_DGRAM)
 
-s = socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((host, port_ui))
+s_ui = socket(socket.AF_INET, socket.SOCK_STREAM)
+s_ui.connect((host, port_ui))
+s_emi = socket(socket.AF_INET, socket.SOCK_STREAM)
+s_emi.connect((host, port_emi))
 #the number of sample UI
 div_ui = 3
 num_ui = 400*div_ui
 
-def send2Server(data):
-	s.send(pickle.dumps(data))
-
 # Send messages
 def send2Server_ui(data):
-    	if(UDPSock.sendto(pickle.dumps(data),addr_ui)):
-        	#print "Sending message"
-		return
-        # Close socket
-	#UDPSock.close()
+	s_ui.send(pickle.dumps(data))
 
 def send2Server_emi(data):
-    	if(UDPSock.sendto(pickle.dumps(data),addr_emi)):
-        	#print "Sending message"
-		return
+    s_emi.send(pickle.dumps(data))
 
 def readUI(UI_in):
 	capture = adc.Capture()
 	capture.start()
 	while(1):
-		data = np.empty([num_ui+1,1])
-		start = time.time()
+		data = np.empty([num_ui+2,1])
+		data[num_ui,0] = time.time()
 		for i in range(num_ui):
 			data[i] = capture.values[:1]
 			time.sleep(0.00004)
@@ -66,7 +59,7 @@ def readUI(UI_in):
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
-		#data[num_ui]=(start, time.time())
+		data[num_ui+1,0]=time.time())
 		#print data
 		UI_in.send(data)
 		#print data
@@ -95,7 +88,7 @@ def read_sendEMI():
 			#print "writing uart"
 			start = time.time()
 
-			@timeout
+			@timeout(2)
 			readUart(ser)
 			#ser.write('1')
 			#print "finish writing"
