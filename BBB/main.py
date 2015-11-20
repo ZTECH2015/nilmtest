@@ -31,7 +31,7 @@ UDPSock = socket(AF_INET,SOCK_DGRAM)
 
 #the number of sample UI
 div_ui = 3
-num_ui = 1200*div_ui
+num_ui = 400*div_ui
 
 
 # Send messages
@@ -51,18 +51,19 @@ def readUI(UI_in):
 	capture = adc.Capture()
 	capture.start()
 	while(1):
-		data = np.empty([num_ui+1,2])
+		data = np.empty([num_ui+1,1])
 		start = time.time()
 		for i in range(num_ui):
-			data[i] = capture.values[:2]
-			time.sleep(0.0001)
+			data[i] = capture.values[:1]
+			time.sleep(0.00004)
 		#print data, offset, voltage_zoom, data[:,0]
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
-		data[num_ui]=(start, time.time())
+		#data[num_ui]=(start, time.time())
 		#print data
 		UI_in.send(data)
+		#print data
 		#print(time.time() - start)
 def sendUI(UIpipe):
 	UI_out, UI_in = UIpipe
@@ -85,7 +86,12 @@ def read_sendEMI():
 	ser.open()
 	if ser.isOpen():
 		while(1):
+			#print "writing uart"
+			start = time.time()
+			ser.write('1')
+			#print "finish writing"
 			send2Server_emi(ser.read(4096))
+			print("send EMI consume:", time.time()-start)
 
 def sendEMI(EMIpipe):
 	EMI_out, EMI_in = EMIpipe
@@ -93,7 +99,7 @@ def sendEMI(EMIpipe):
 	while 1:
 		start = time.time()
 		data = EMI_out.recv()
-		data = np.fromstring(data, dtype = np.float32)
+		#data = np.fromstring(data, dtype = np.float32)
 		#print data
 		send2Server_emi(data)
 		print("send EMI consume:", time.time()-start)
@@ -105,7 +111,7 @@ p_readui = Process(target = readUI, args = (UI_in,))
 p_readui.start()
 
 #EMI_out, EMI_in = Pipe()
-read_sendEMI = Process(target = sendEMI)
+read_sendEMI = Process(target = read_sendEMI)
 read_sendEMI.start()
 #p_reademi = Process(target = readEMI, args = (EMI_in,))
 #p_reademi.start()
