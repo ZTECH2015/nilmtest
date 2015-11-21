@@ -6,7 +6,7 @@ numsamples = 10000 # how many samples to capture
 capture = adc.Capture()
 
 capture.oscilloscope_init(adc.OFF_VALUES, numsamples) # captures AIN0 - the first elt in AIN array
-capture.oscilloscope_init(adc.OFF_VALUES+8, numsamples) # captures AIN2 - the third elt in AIN array
+#capture.oscilloscope_init(adc.OFF_VALUES+8, numsamples) # captures AIN2 - the third elt in AIN array
 capture.start()
 
 for _ in range(10):
@@ -16,7 +16,7 @@ for _ in range(10):
     time.sleep(0.1)
 
 capture.stop()
-capture.wait()
+print '111'
 
 print 'Saving oscilloscope values to "data.csv"'
 

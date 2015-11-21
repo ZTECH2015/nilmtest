@@ -8,9 +8,8 @@ import serial
 from multiprocessing import Process, Queue
 from timeout import timeout
 
-
 # Set up zooming coefficient
-offset = 5*4.7*2/51.7
+offset = 5*9.1/(9.1+47)
 v_conv = 1.8/4096
 voltage_zoom = 56150/float(150)
 current_zoom = 100/0.033/28
@@ -27,7 +26,7 @@ port = 9999
 
 
 #the number of sample UI
-num_ui = 1200
+num_ui = 1000
 
 
 def readUI(q):
@@ -38,17 +37,17 @@ def readUI(q):
 		data[num_ui,0] = time.time()
 		for i in range(num_ui):
 			data[i] = capture.values[:2]
-			time.sleep(0.00002)
-		#print data, offset, voltage_zoom, data[:,0]
+			time.sleep(0.00001)
+		print data
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
-		data[num_ui,1]=time.time())
+		data[num_ui,1]=time.time()
 		#print data
 		q.put(data)
 		#print data
 		#print(time.time() - start)
-def send(q,s):
+def send(q,s,addr):
 	while 1:
 		start0 = time.time()
 		# start = data[num_ui,0]
@@ -57,52 +56,38 @@ def send(q,s):
 		# i_data = (data[:num_ui,1].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * current_zoom
 		# data = np.vstack((np.vstack((u_data, i_data)).transpose(),[start,end]))
 		#print data
-		s.send(pickle.dumps(q.get(True)))
-		print("send UI consume:", time.time()-start0)
+		s.sendto(pickle.dumps(q.get(True)),addr)
+		print("send data consume:", time.time()-start0)
 
 def readEMI(q):
 	UART.setup("UART1")
-	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800)
+	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
 	if ser.isOpen():
 		while(1):
 			#print "writing uart"
 			#start = time.time()
-			readUart(ser)
-			#ser.write('1')
+			ser.write('1')
+			#q.put(ser.read(4096))
+			q.put(np.fromstring(ser.read(4096), dtype = np.float32))
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
+def testSoc(s,addr):
+	while(1):
+		if(s.sendto(pickle.dumps(np.random.random(10)),addr)):
+			print "sending data"
+		time.sleep(1)
 
-@timeout(1)
-def readUart(ser):
-	ser.write('1')
-	#q.put(ser.read(4096))
-	q.put(np.fromstring(ser.read(4096), dtype = np.float32))
-
-def sendEMI(EMIpipe):
-	EMI_out, EMI_in = EMIpipe
-	EMI_in.close()
-	while 1:
-		start = time.time()
-		data = EMI_out.recv()
-		#data = np.fromstring(data, dtype = np.float32)
-		#print data
-		send2Server_emi(data)
-		print("send EMI consume:", time.time()-start)
-
-if __name__ = '__main__':
+if __name__ == '__main__':
 	# Create socket
-	#UDPSock = socket(AF_INET,SOCK_DGRAM)
-	s = socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect((host, port))
+	s = socket(AF_INET,SOCK_DGRAM)
+	addr = (host, port)
+	#s = socket(AF_INET, SOCK_STREAM)
+	#s.connect((host, port))
+	#Process(target = testSoc, args = (s, addr,)).start()
 	q = Queue()
 	Process(target = readUI, args = (q,)).start()
-	Process(target = readEMI, args = (q,)).start()
-	Process(target = send, args = (q,s,)).start()
-	#EMI_out, EMI_in = Pipe()
-	#read_sendEMI = Process(target = read_sendEMI)
-	#read_sendEMI.start()
-	#p_reademi = Process(target = readEMI, args = (EMI_in,))
-	#p_reademi.start()
+	#Process(target = readEMI, args = (q,)).start()
+	Process(target = send, args = (q,s,addr,)).start()
