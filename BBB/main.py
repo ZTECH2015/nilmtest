@@ -5,7 +5,7 @@ import cPickle as pickle
 import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
 import serial
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Queue
 from timeout import timeout
 
 
@@ -22,31 +22,16 @@ current_zoom = 100/0.033/28
 # Set the socket parameters
 host = '104.194.113.209'
 host_qb = '10.221.33.195'
-port_ui = 9999
-port_emi = 8000
-buf = 10**4
-addr_ui = (host_qb,port_ui)
-addr_emi = (host_qb,port_emi)
+port = 9999
 
-# Create socket
-#UDPSock = socket(AF_INET,SOCK_DGRAM)
 
-s_ui = socket(socket.AF_INET, socket.SOCK_STREAM)
-s_ui.connect((host, port_ui))
-s_emi = socket(socket.AF_INET, socket.SOCK_STREAM)
-s_emi.connect((host, port_emi))
+
 #the number of sample UI
 div_ui = 3
-num_ui = 400*div_ui
+num_ui = 1200*div_ui
 
-# Send messages
-def send2Server_ui(data):
-	s_ui.send(pickle.dumps(data))
 
-def send2Server_emi(data):
-    s_emi.send(pickle.dumps(data))
-
-def readUI(UI_in):
+def readUI(q):
 	capture = adc.Capture()
 	capture.start()
 	while(1):
@@ -61,12 +46,10 @@ def readUI(UI_in):
 		#print type(data)
 		data[num_ui+1,0]=time.time())
 		#print data
-		UI_in.send(data)
+		q.put(data)
 		#print data
 		#print(time.time() - start)
-def sendUI(UIpipe):
-	UI_out, UI_in = UIpipe
-	UI_in.close()
+def send(q,s):
 	while 1:
 		start0 = time.time()
 		# start = data[num_ui,0]
@@ -75,10 +58,10 @@ def sendUI(UIpipe):
 		# i_data = (data[:num_ui,1].reshape(-1,div_ui).mean(axis = 1)*v_conv-offset) * current_zoom
 		# data = np.vstack((np.vstack((u_data, i_data)).transpose(),[start,end]))
 		#print data
-		send2Server_ui(UI_out.recv())
+		s.send(pickle.dumps(q.get(True)))
 		print("send UI consume:", time.time()-start0)
 
-def read_sendEMI():
+def readEMI(q):
 	UART.setup("UART1")
 	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800)
 	ser.close()
@@ -86,18 +69,17 @@ def read_sendEMI():
 	if ser.isOpen():
 		while(1):
 			#print "writing uart"
-			start = time.time()
-
-			@timeout(2)
+			#start = time.time()
 			readUart(ser)
 			#ser.write('1')
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
-			print("send EMI consume:", time.time()-start)
+			#print("send EMI consume:", time.time()-start)
 
+@timeout(1)
 def readUart(ser):
 	ser.write('1')
-	send2Server_emi(ser.read(4096))
+	q.put(ser.read(4096))
 
 def sendEMI(EMIpipe):
 	EMI_out, EMI_in = EMIpipe
@@ -110,14 +92,17 @@ def sendEMI(EMIpipe):
 		send2Server_emi(data)
 		print("send EMI consume:", time.time()-start)
 
-UI_out, UI_in = Pipe()
-p_sendui = Process(target = sendUI, args = ((UI_out, UI_in),))
-p_sendui.start()
-p_readui = Process(target = readUI, args = (UI_in,))
-p_readui.start()
-
-#EMI_out, EMI_in = Pipe()
-read_sendEMI = Process(target = read_sendEMI)
-read_sendEMI.start()
-#p_reademi = Process(target = readEMI, args = (EMI_in,))
-#p_reademi.start()
+if __name__ = '__main__':
+	# Create socket
+	#UDPSock = socket(AF_INET,SOCK_DGRAM)
+	s = socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect((host, port))
+	q = Queue()
+	Process(target = readUI, args = (q,)).start()
+	Process(target = readEMI, args = (q,)).start()
+	Process(target = send, args = (q,s,)).start()
+	#EMI_out, EMI_in = Pipe()
+	#read_sendEMI = Process(target = read_sendEMI)
+	#read_sendEMI.start()
+	#p_reademi = Process(target = readEMI, args = (EMI_in,))
+	#p_reademi.start()
