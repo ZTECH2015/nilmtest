@@ -27,24 +27,23 @@ port = 9999
 
 
 #the number of sample UI
-div_ui = 3
-num_ui = 1200*div_ui
+num_ui = 1200
 
 
 def readUI(q):
 	capture = adc.Capture()
 	capture.start()
 	while(1):
-		data = np.empty([num_ui+2,1])
+		data = np.empty([num_ui+1,2])
 		data[num_ui,0] = time.time()
 		for i in range(num_ui):
-			data[i] = capture.values[:1]
-			time.sleep(0.00004)
+			data[i] = capture.values[:2]
+			time.sleep(0.00002)
 		#print data, offset, voltage_zoom, data[:,0]
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
-		data[num_ui+1,0]=time.time())
+		data[num_ui,1]=time.time())
 		#print data
 		q.put(data)
 		#print data
@@ -79,7 +78,8 @@ def readEMI(q):
 @timeout(1)
 def readUart(ser):
 	ser.write('1')
-	q.put(ser.read(4096))
+	#q.put(ser.read(4096))
+	q.put(np.fromstring(ser.read(4096), dtype = np.float32))
 
 def sendEMI(EMIpipe):
 	EMI_out, EMI_in = EMIpipe
