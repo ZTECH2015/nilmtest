@@ -38,12 +38,10 @@ def readUI(q):
 		for i in range(num_ui):
 			data[i] = capture.values[:2]
 			time.sleep(0.00001)
-		print data
 		#data[:,0] = (data[:,0]*v_conv-offset) * voltage_zoom
 		#data[:,1] = (data[:,1]*v_conv-offset) * current_zoom/resist
 		#print type(data)
 		data[num_ui,1]=time.time()
-		#print data
 		q.put(data)
 		#print data
 		#print(time.time() - start)
@@ -58,6 +56,7 @@ def send(q,s,addr):
 		#print data
 		s.sendto(pickle.dumps(q.get(True)),addr)
 		print("send data consume:", time.time()-start0)
+		time.sleep(0.1)
 
 def readEMI(q):
 	UART.setup("UART1")
@@ -89,5 +88,5 @@ if __name__ == '__main__':
 	#Process(target = testSoc, args = (s, addr,)).start()
 	q = Queue()
 	Process(target = readUI, args = (q,)).start()
-	#Process(target = readEMI, args = (q,)).start()
+	Process(target = readEMI, args = (q,)).start()
 	Process(target = send, args = (q,s,addr,)).start()
