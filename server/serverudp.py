@@ -17,7 +17,7 @@ def recv(q):
 	UDPSock.bind(addr)
 
 	# Receive messages
-	for i in range(1000):
+	while 1:
 	    data,addr = UDPSock.recvfrom(buf)
 	    if data:
 		    L = pickle.loads(data, encoding="bytes")
@@ -32,20 +32,25 @@ def save(q):
 	voltage_zoom = 510/20*(120/9)
 	current_zoom = 100/0.05/18
 	testData = []
-	for i in range(1000):
+	while 1:
 		data = q.get(True)
-		if np.shape(data)[0] == 1024:
+		if type(data) is bytes:
+			data = np.fromstring(data,dtype = np.float32)
 			testData.append(data)
 		else:
-			data[:-1,0] = (data*v_conv-offset)*voltage_zoom
-			data[:-1,1] = (data*v_conv-offset)*current_zoom
+			data[:-1,0] = (data[:-1,0]*v_conv-offset)*voltage_zoom
+			data[:-1,1] = (data[:-1,0]*v_conv-offset)*current_zoom
 			testData.append(data)
-	output = open('testData.pkl', 'wb')
-	pickle.dump(testData, output)
-	output.close
+		#print(testData)
+		if len(testData) > 1000:
+			output = open('testData.pkl', 'wb')
+			pickle.dump(testData, output)
+			output.close
+			testData = []
+			print('write to the file done!!!!!')
 
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
 	q = Queue()
 	Process(target = recv, args = (q,)).start()
 	Process(target = save, args = (q,)).start()
