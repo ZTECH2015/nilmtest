@@ -47,7 +47,8 @@ def send(q,s,addr):
 		start0 = time.time()
 		s.sendto(pickle.dumps(q.get(True)),addr)
 		#s.send(pickle.dumps(q.get(True), protocol = -1))
-		time.sleep(0.15)
+		#s.settimeout(0.2)
+		time.sleep(0.18)
 		print("send data consume:", time.time()-start0)
 		
 
