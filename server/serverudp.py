@@ -7,42 +7,50 @@ from multiprocessing import Process, Queue
 
 def recv(q):
 	# Set the socket parameters
-	host = '104.194.113.209'
+	#host = '104.194.113.209'
+	host = '104.194.113.208'
 	port = 9999
 	buf = 2**16
 	addr = (host,port)
 
 	# Create socket and bind to address
-	UDPSock = socket(AF_INET,SOCK_DGRAM)
-	UDPSock.bind(addr)
-
-	# Receive messages
+	s = socket(AF_INET,SOCK_DGRAM)
+	s.bind(addr)
+	#s.listen(1)
+	#conn, addr = s.accept()
+	#print('Connected by', addr)
+	# Receive message
 	while 1:
-	    data,addr = UDPSock.recvfrom(buf)
+	    data,addr = s.recvfrom(buf)
 	    if data:
 		    L = pickle.loads(data, encoding="bytes")
-		    #print(repr(L))
 		    q.put(L)
+		    #print(repr(L))
+		# data = conn.recv(buf)
+		# print(len(data), type(data))
+		#L = pickle.loads(data, encoding="bytes")
 	# Close socket
-	UDPSock.close()
+	s.close()
 
 def save(q):
 	offset = 5*9.1/(9.1+47)
 	v_conv = 1.8/4096
-	voltage_zoom = 510/20*(120/9)
+	tol_voltage = 0.057
+	tol_current = 0.057
+	voltage_zoom = 510/20*(110/8.88)
 	current_zoom = 100/0.05/18
 	testData = []
 	while 1:
 		data = q.get(True)
 		if type(data) is bytes:
-			data = np.fromstring(data,dtype = np.float32)
+			data = 20*np.log(1000*np.fromstring(data,dtype = np.float32))
 			testData.append(data)
 		else:
-			data[:-1,0] = (data[:-1,0]*v_conv-offset)*voltage_zoom
-			data[:-1,1] = (data[:-1,0]*v_conv-offset)*current_zoom
+			data[:-1,0] = (data[:-1,0]*v_conv-offset-tol_voltage)*voltage_zoom
+			data[:-1,1] = (data[:-1,1]*v_conv-offset-tol_current)*current_zoom
 			testData.append(data)
-		#print(testData)
-		if len(testData) > 1000:
+		print(testData)
+		if len(testData) > 200:
 			output = open('testData.pkl', 'wb')
 			pickle.dump(testData, output)
 			output.close
