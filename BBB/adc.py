@@ -1,29 +1,36 @@
 import beaglebone_pru_adc as adc
 import time
+from multiprocessing import Process
 
-numsamples = 10000 # how many samples to capture
+ # how many samples to capture
 
-capture = adc.Capture()
 
-capture.oscilloscope_init(adc.OFF_VALUES, numsamples) # captures AIN0 - the first elt in AIN array
-#capture.oscilloscope_init(adc.OFF_VALUES+8, numsamples) # captures AIN2 - the third elt in AIN array
-capture.start()
+def ain(n):
+	numsamples = 65536
+	capture = adc.Capture()
+	capture.cap_delay=100
+	capture.oscilloscope_init(adc.OFF_VALUES+n, numsamples) # captures AIN0 - the first elt in AIN array
+	#capture.oscilloscope_init(adc.OFF_VALUES+4, numsamples) # captures AIN1 - the third elt in AIN array
+	capture.start()
 
-for _ in range(10):
-    if capture.oscilloscope_is_complete():
-        break
-    print '.'
-    time.sleep(0.1)
+	start = time.time()
+	for _ in range(10):
+    		if capture.oscilloscope_is_complete():
+        		break
+    		print '.'
+    		time.sleep(0.1)
+	print "conversion consume time:", time.time()-start
+	capture.stop()
 
-capture.stop()
-print '111'
+	#print 'Saving oscilloscope values to "data.csv"'
 
-print 'Saving oscilloscope values to "data.csv"'
+   	#for x in capture.oscilloscope_data(numsamples):
+		#print x
 
-with open('data.csv', 'w') as f:
-    for x in capture.oscilloscope_data(numsamples):
-        f.write(str(x) + '\n')
+	#print 'done'
 
-print 'done'
+	capture.close()
 
-capture.close()
+if __name__ == "__main__":
+	while 1:
+		Process(target = ain, args = (0,)).start()

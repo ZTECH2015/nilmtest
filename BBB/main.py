@@ -19,8 +19,8 @@ from multiprocessing import Process, Queue
 #print "current_zoom", current_zoom
 
 # Set the socket parameters
-#host = '104.194.113.209'
-host = '104.194.113.208'
+host = '104.194.113.209'
+#host = '104.194.113.208'
 host_qb = '10.221.33.195'
 port = 9999
 
@@ -32,41 +32,73 @@ num_ui = 1000
 
 def readUI(q):
 	capture = adc.Capture()
+	capture.cap_delay = 10000
 	capture.start()
 	while(1):
 		data = np.empty([num_ui+1,2])
 		data[num_ui,0] = time.time()
 		for i in range(num_ui):
 			data[i] = capture.values[:2]
+			#print capture.timer
 			time.sleep(0.00002)
 		data[num_ui,1]=time.time()
+		print data[num_ui,1]- data[num_ui,0]
 		q.put(data)
 
 def send(q,s,addr):
 	while 1:
 		start0 = time.time()
-		s.sendto(pickle.dumps(q.get(True)),addr)
-		#s.send(pickle.dumps(q.get(True), protocol = -1))
+		data = q.get(True)
+		s.sendto(pickle.dumps(data),addr)
+		#s.send(pickle.dumps(data, protocol = -1))
 		#s.settimeout(0.2)
-		time.sleep(0.18)
+		#print(data)
+		#time.sleep(0.18)
 		print("send data consume:", time.time()-start0)
 		
 
 def readEMI(q):
 	UART.setup("UART1")
-	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 1)
+	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 0.2)
 	ser.close()
 	ser.open()
 	if ser.isOpen():
 		while(1):
 			ser.write('1')
-			data = ser.read(4096)
-			#data = np.fromstring(ser.read(4096), dtype = np.float32)
+			#data = ser.read(4096)
+			data = np.fromstring(ser.read(4096), dtype = np.float32)
 			q.put(data)
 			#print data.shape[0]
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
+
+def readUI_u(q):
+	UART.setup("UART4")
+	ser = serial.Serial(port = "/dev/ttyO4", baudrate=460800, timeout =0.2)
+	ser.close()
+	ser.open()
+	iter = 0
+	data_s = []
+	if ser.isOpen():
+		while(1):
+			iter = iter+1
+			ser.write('1')
+			#data = ser.read(276)
+			data = np.fromstring(ser.read(276), dtype = np.float32)
+			data_s.append(data)
+			#print(len(data))
+			#print(data)
+			if iter == 8:
+				q.put(data_s)
+				data_s = []
+				iter = 0
+			#print data.shape[0]
+			#print "finish writing"
+			#send2Server_emi(ser.read(4096))
+			#print("send EMI consume:", time.time()-start)
+
+
 def testSoc(s,addr):
 	while(1):
 		if(s.sendto(pickle.dumps(np.random.random(10)),addr)):
@@ -81,6 +113,6 @@ if __name__ == '__main__':
 	#s.connect((host, port))
 	#Process(target = testSoc, args = (s, addr,)).start()
 	q = Queue()
-	Process(target = readUI, args = (q,)).start()
-	Process(target = readEMI, args = (q,)).start()
+	Process(target = readUI_u, args = (q,)).start()
+	#Process(target = readEMI, args = (q,)).start()
 	Process(target = send, args = (q,s,addr,)).start()
