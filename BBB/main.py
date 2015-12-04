@@ -49,12 +49,16 @@ def send(q,s,addr):
 	while 1:
 		start0 = time.time()
 		data = q.get(True)
-		s.sendto(pickle.dumps(data),addr)
+		if s.sendto(pickle.dumps(data),addr):
+			print("send data consume:", time.time()-start0)
+		else:
+			print("send fail consume...................", time.time()-start0)
+		time.sleep(0.2)
 		#s.send(pickle.dumps(data, protocol = -1))
 		#s.settimeout(0.2)
 		#print(data)
 		#time.sleep(0.18)
-		print("send data consume:", time.time()-start0)
+		
 		
 
 def readEMI(q):
