@@ -59,15 +59,18 @@ def send(q,s,addr):
 
 def readEMI(q):
 	UART.setup("UART1")
-	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 0.2)
+	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
 	if ser.isOpen():
 		while(1):
 			ser.write('1')
 			#data = ser.read(4096)
-			data = np.fromstring(ser.read(4096), dtype = np.float32)
-			q.put(data)
+			data = ser.read(4096)
+			if len(data) == 4096:
+				data = 20*np.log10(1000*np.fromstring(data, dtype = np.float32)/2048)
+				q.put(data)
+				print("emi 2 pipe")
 			#print data.shape[0]
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
@@ -75,7 +78,7 @@ def readEMI(q):
 
 def readUI_u(q):
 	UART.setup("UART4")
-	ser = serial.Serial(port = "/dev/ttyO4", baudrate=460800, timeout =0.2)
+	ser = serial.Serial(port = "/dev/ttyO4", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
 	iter = 0
@@ -84,15 +87,17 @@ def readUI_u(q):
 		while(1):
 			iter = iter+1
 			ser.write('1')
-			#data = ser.read(276)
-			data = np.fromstring(ser.read(276), dtype = np.float32)
-			data_s.append(data)
+			data = ser.read(276)
+			if len(data) == 276:
+				data = np.fromstring(data, dtype = np.float32)
+				data_s.append(data)
 			#print(len(data))
 			#print(data)
-			if iter == 8:
-				q.put(data_s)
-				data_s = []
-				iter = 0
+				if iter == 4:
+					q.put(data_s)
+					data_s = []
+					iter = 0
+					print("ui 2 pipe")
 			#print data.shape[0]
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
@@ -114,5 +119,5 @@ if __name__ == '__main__':
 	#Process(target = testSoc, args = (s, addr,)).start()
 	q = Queue()
 	Process(target = readUI_u, args = (q,)).start()
-	#Process(target = readEMI, args = (q,)).start()
+	Process(target = readEMI, args = (q,)).start()
 	Process(target = send, args = (q,s,addr,)).start()
