@@ -22,7 +22,8 @@ from multiprocessing import Process, Queue
 host = '104.194.113.209'
 #host = '104.194.113.208'
 host_qb = '10.221.33.195'
-port = 9999
+port_ui = 9999
+port_emi = 8000
 
 
 
@@ -46,19 +47,23 @@ def readUI(q):
 		q.put(data)
 
 def send(q,s,addr):
+	counter = 0
 	while 1:
 		start0 = time.time()
 		data = q.get(True)
-		if s.sendto(pickle.dumps(data),addr):
-			print("send data consume:", time.time()-start0)
+		if s.send(pickle.dumps(data, protocol = -1)):
+		#if s.sendto(pickle.dumps(data),addr):
+			#print('.')
+			counter = counter + 1
+			print("send data consume:", time.time()-start0, "counter is :", counter)
+			time.sleep(0.2)
 		else:
 			print("send fail consume...................", time.time()-start0)
-		time.sleep(0.2)
+		
 		#s.send(pickle.dumps(data, protocol = -1))
 		#s.settimeout(0.2)
 		#print(data)
 		#time.sleep(0.18)
-		
 		
 
 def readEMI(q):
@@ -66,15 +71,26 @@ def readEMI(q):
 	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
+	iter = 0
+	data_s = []
 	if ser.isOpen():
 		while(1):
+			#iter = iter + 1
 			ser.write('1')
 			#data = ser.read(4096)
 			data = ser.read(4096)
 			if len(data) == 4096:
 				data = 20*np.log10(1000*np.fromstring(data, dtype = np.float32)/2048)
-				q.put(data)
-				print("emi 2 pipe")
+				data_s.append(data)
+				data_s.append(time.time())
+				q.put(data_s)
+				data_s = []
+				#if iter == 1:
+					#q.put(data)
+					#iter = 0
+					#data_s = []
+			else:
+				print("fail to get emi")
 			#print data.shape[0]
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
@@ -95,13 +111,16 @@ def readUI_u(q):
 			if len(data) == 276:
 				data = np.fromstring(data, dtype = np.float32)
 				data_s.append(data)
+				data_s.append(time.time())
 			#print(len(data))
 			#print(data)
 				if iter == 4:
 					q.put(data_s)
 					data_s = []
 					iter = 0
-					print("ui 2 pipe")
+					#print("ui 2 pipe")
+			else:
+				print("fail to get u......i........")
 			#print data.shape[0]
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
@@ -116,12 +135,17 @@ def testSoc(s,addr):
 
 if __name__ == '__main__':
 	# Create socket
-	s = socket(AF_INET,SOCK_DGRAM)
-	addr = (host, port)
-	#s = socket(AF_INET, SOCK_STREAM)
-	#s.connect((host, port))
+	#s = socket(AF_INET,SOCK_DGRAM)
+	addr = (host, port_ui)
+	s = socket(AF_INET, SOCK_STREAM)
+	s.connect((host, port_ui))
+	s1 = socket(AF_INET, SOCK_STREAM)
+	s1.connect((host, port_emi))
 	#Process(target = testSoc, args = (s, addr,)).start()
-	q = Queue()
-	Process(target = readUI_u, args = (q,)).start()
-	Process(target = readEMI, args = (q,)).start()
-	Process(target = send, args = (q,s,addr,)).start()
+	q_ui = Queue()
+	q_emi = Queue()
+	Process(target = send, args = (q_ui,s,addr,)).start()
+	Process(target = send, args = (q_emi,s1,addr,)).start()
+	Process(target = readUI_u, args = (q_ui,)).start()
+	Process(target = readEMI, args = (q_emi,)).start()
+	
