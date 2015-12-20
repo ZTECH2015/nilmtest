@@ -15,7 +15,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 #define DATA_SIZE 1024 // define data size which is half of buffer size
-#define DOWN_SAMPLE 8 // define data size which is half of buffer size
+#define DOWN_SAMPLE 20 // define data size which is half of buffer size
 #define ONELOOP_DATA_SIZE 64 // define ONE LOOP data size
 #define LOOP_SIZE DATA_SIZE/ONELOOP_DATA_SIZE // define LOOP size
 #define SEND_BUF_SIZE LOOP_SIZE*4+5	//发送数据长度,最好等于sizeof(TEXT_TO_SEND)的整数倍.
@@ -87,27 +87,27 @@ int main(void)
 			time_count= TIM_GetCounter(TIM3)+(u32)timeout*65536;
 			u_ave = 0;
 			c_ave = 0;
-			for(i=0;i<DATA_SIZE;i++)
-			{
-				if((i==0) && (fabs(Data_c[i+1] - Data_c[i])>fabs(Data_c[i+2] - Data_c[i+1])*coef_tol))
-				{
-					Data_c[i] = Data_c[i+1];
-				}
-				else
-				{
-					if((i == DATA_SIZE-1)&&(fabs(Data_c[i] - Data_c[i-1])>fabs(Data_c[i-1] - Data_c[i-2])*coef_tol))
-					{
-						Data_c[i] = Data_c[i-1];
-					}
-					else
-					{
-						if((fabs(Data_c[i] - Data_c[i-1])>fabs(Data_c[i-1] - Data_c[i-2])*coef_tol)&&(fabs(Data_c[i+1] - Data_c[i])>fabs(Data_c[i+2] - Data_c[i+1])*coef_tol))
-						{
-							Data_c[i] = (Data_c[i-1]+Data_c[i+1])/2;
-						}
-					}
-				}
-			}
+//			for(i=0;i<DATA_SIZE;i++)
+//			{
+//				if((i==0) && (fabs(Data_c[i+1] - Data_c[i])>fabs(Data_c[i+2] - Data_c[i+1])*coef_tol))
+//				{
+//					Data_c[i] = Data_c[i+1];
+//				}
+//				else
+//				{
+//					if((i == DATA_SIZE-1)&&(fabs(Data_c[i] - Data_c[i-1])>fabs(Data_c[i-1] - Data_c[i-2])*coef_tol))
+//					{
+//						Data_c[i] = Data_c[i-1];
+//					}
+//					else
+//					{
+//						if((fabs(Data_c[i] - Data_c[i-1])>fabs(Data_c[i-1] - Data_c[i-2])*coef_tol)&&(fabs(Data_c[i+1] - Data_c[i])>fabs(Data_c[i+2] - Data_c[i+1])*coef_tol))
+//						{
+//							Data_c[i] = (Data_c[i-1]+Data_c[i+1])/2;
+//						}
+//					}
+//				}
+//			}
 			for(i=0;i<DATA_SIZE;i++)
 			{
 				u_ave = u_ave + Data_v[i];
@@ -126,43 +126,34 @@ int main(void)
 			{
 				for(j=0;j<ONELOOP_DATA_SIZE;j++)
 				{
-					dummy = fabs(Data_c[i*ONELOOP_DATA_SIZE+j]*Data_v[i*ONELOOP_DATA_SIZE+j]);
+					
 					if(j == 0)
 					{
-						Data_p_single[i] = dummy;
-						Data_v_max[i] = fabs(Data_v[i*ONELOOP_DATA_SIZE+j]);
-						Data_c_max[i] = fabs(Data_c[i*ONELOOP_DATA_SIZE+j]);
+						Data_p_single[i] = Data_c[i*ONELOOP_DATA_SIZE+j]*Data_v[i*ONELOOP_DATA_SIZE+j];
+						Data_v_max[i] = pow(Data_v[i*ONELOOP_DATA_SIZE+j],2);
+						Data_c_max[i] = pow(Data_c[i*ONELOOP_DATA_SIZE+j],2);
 					}
 					else
 					{
-						if(Data_p_single[i] < dummy)
-						{
-							Data_p_single[i] = dummy;
-						}
-						dummy = fabs(Data_v[i*ONELOOP_DATA_SIZE+j]);
-						if(Data_v_max[i]<dummy)
-						{
-							Data_v_max[i] = dummy;
-						}
-						dummy = fabs(Data_c[i*ONELOOP_DATA_SIZE+j]);
-						if(Data_c_max[i] < dummy)
-						{
-							Data_c_max[i] = dummy;
-						}
+						Data_p_single[i] = Data_p_single[i]+Data_c[i*ONELOOP_DATA_SIZE+j]*Data_v[i*ONELOOP_DATA_SIZE+j];
+						Data_v_max[i] = Data_v_max[i]+pow(Data_v[i*ONELOOP_DATA_SIZE+j],2);
+						Data_c_max[i] = Data_c_max[i]+pow(Data_c[i*ONELOOP_DATA_SIZE+j],2);
 					}
 				}
+				Data_p_single[i] = Data_p_single[i]/ONELOOP_DATA_SIZE;
+				Data_v_max[i] = sqrt(Data_v_max[i]/ONELOOP_DATA_SIZE);
+				Data_c_max[i] = sqrt(Data_c_max[i]/ONELOOP_DATA_SIZE);
 				SendBuff[i] = Data_v_max[i];
 				SendBuff[LOOP_SIZE+i] = Data_c_max[i];
-				Data_p_single[i] = Data_p_single[i]/sqrt(2);
 				SendBuff[2*LOOP_SIZE+i] = Data_p_single[i];
-				SendBuff[3*LOOP_SIZE+i] = sqrt(pow(Data_v_max[i]*Data_c_max[i]/sqrt(2),2) - pow(Data_p_single[i],2));
+				SendBuff[3*LOOP_SIZE+i] = sqrt(pow(Data_v_max[i]*Data_c_max[i],2) - pow(Data_p_single[i],2));
 			}
 			time_count= TIM_GetCounter(TIM3)+(u32)timeout*65536;
 			arm_cfft_radix4_f32(&scfft,fft_inputbuf);
 			arm_cmplx_mag_f32(fft_inputbuf,fft_outputbuf,DATA_SIZE);
 			for(i=0;i<SEND_BUF_SIZE-4*LOOP_SIZE;i++)
 			{
-				SendBuff[4*LOOP_SIZE+i] = fft_outputbuf[DATA_SIZE*(i+1)/ONELOOP_DATA_SIZE]/DATA_SIZE/2;
+				SendBuff[4*LOOP_SIZE+i] = fft_outputbuf[DATA_SIZE*(i+1)/ONELOOP_DATA_SIZE]/DATA_SIZE*2;
 			}
 			for(i=SEND_BUF_SIZE;i<SEND_BUF_SIZE+BUF_TOL;i++)
 			{
