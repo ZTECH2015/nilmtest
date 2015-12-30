@@ -57,7 +57,7 @@ int main(void)
 	{   
 			while(!DataReady) // Wait for DMA interrupt to signal next available block
 				__WFI();
-			emi_min = 1000;
+			//emi_min = 1000;
 			emi_ave=0;
 			fft_iter++;
 			for(i=0;i<DATA_SIZE;i++)
@@ -85,13 +85,13 @@ int main(void)
 			if (fft_iter == 1)
 			{
 				for(i=0;i<SEND_BUF_SIZE;i++){
-					SendBuff[i] = fft_outputbuf[i]/DATA_SIZE/2;
+					SendBuff[i] = fft_outputbuf[i+1];
 				}
 			}
 			else
 			{
 				for(i=0;i<SEND_BUF_SIZE;i++){
-					SendBuff[i] = SendBuff[i] + fft_outputbuf[i]/DATA_SIZE/2;
+					SendBuff[i] = SendBuff[i] + fft_outputbuf[i+1];
 				}
 			}
 			//time_count= TIM_GetCounter(TIM3)+(u32)timeout*65536;
