@@ -148,7 +148,7 @@ if __name__ == '__main__':
 	p_send = Process(target = send, args = (q,s,addr,))
 	p_ui = Process(target = readUI_u, args = (q, q_emi,))
 	p_emi = Process(target = readEMI, args = (q_emi,))
-	
+	os.system("ntpdate -b poll.ntp.org")
 
 	while 1:
 		while os.system("ping -c 1 " + host) == 0:
