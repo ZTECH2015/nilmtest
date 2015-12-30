@@ -6,7 +6,6 @@ import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
 import serial
 from multiprocessing import Process, Queue
-from select import select
 #from timeout import timeout
 
 # Set up zooming coefficient
@@ -57,20 +56,22 @@ def clean_data(data):
 	return new_data
 		
 def send(q,s,addr):
-	
-	#counter = 0
-	while 1:
-		start0 = time.time()
-		data = clean_data(q.get(True))
-		if s.send(pickle.dumps(data, protocol = -1)):
-		#if s.sendto(pickle.dumps(data),addr):
-			#print('.')
-			#counter = counter + 1
-			#print("send data consume:", time.time()-start0, "counter is :", counter)
-			time.sleep(0.2)
-		else:
-			print("send fail consume...................", time.time()-start0)
-		
+	try:
+		s.connect(addr)
+		#counter = 0
+		while 1:
+			start0 = time.time()
+			data = clean_data(q.get(True))
+			if s.send(pickle.dumps(data, protocol = -1)):
+			#if s.sendto(pickle.dumps(data),addr):
+				#print('.')
+				#counter = counter + 1
+				#print("send data consume:", time.time()-start0, "counter is :", counter)
+				time.sleep(0.2)
+			else:
+				print("send fail consume...................", time.time()-start0)
+	except:
+		return 1
 		
 
 def readEMI(q_emi):
@@ -123,13 +124,7 @@ def readUI_u(q,q_emi):
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
 
-def socVerify(s):
-	readable, writable, exceptional = select([s],[],[], 0)
-	print writable
-	if readable:
-		return 1
-	else:
-		return 0
+
 def testSoc(s,addr):
 	while(1):
 		if(s.sendto(pickle.dumps(np.random.random(10)),addr)):
@@ -140,33 +135,24 @@ if __name__ == '__main__':
 	# Create socket
 	#s = socket(AF_INET,SOCK_DGRAM)
 	addr = (host, port)
-	
 	s = socket(AF_INET, SOCK_STREAM)
 	#Process(target = testSoc, args = (s, addr,)).start()
-	q = Queue()
-	q_emi = Queue()
-	p_send = Process(target = send, args = (q,s,addr,))
-	p_ui = Process(target = readUI_u, args = (q, q_emi,))
-	p_emi = Process(target = readEMI, args = (q_emi,))
-	os.system("ntpdate -b poll.ntp.org")
-
+	
 	while 1:
 		while os.system("ping -c 1 " + host) == 0:
-			print "connect the server fail"
-			time.sleep(1)
-		s.connect(addr)
-		try:
-			
-			p_send.start()
-			p_ui.start()
-			p_emi.start()
-			print "connect successfully start to transfer data"
-		except:
-			
-			pass
-		while socVerify(s):
+			print "The server is down, let take a rest for 30 sec"
 			time.sleep(30)
-		p_send.terminate()
+		q = Queue()
+		q_emi = Queue()
+		p_ui = Process(target = readUI_u, args = (q, q_emi,))
+		p_emi = Process(target = readEMI, args = (q_emi,))
+		p_ui.start()
+		p_emi.start()
+		if send(q,s,addr):
+			print "connection is failed, let's take a rest and restart!"
+			time.sleep(10)
 		p_ui.terminate()
 		p_emi.terminate()
+
+		
 		
