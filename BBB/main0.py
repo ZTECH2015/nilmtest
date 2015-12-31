@@ -21,8 +21,8 @@ from select import select
 
 # Set the socket parameters
 host_test = "127.0.0.1"
-host = '104.194.126.108'
-#host = '104.194.113.208'
+host_iitserver = '104.194.126.108'
+host = '104.194.124.231'
 host_qb = '10.221.33.195'
 port = 9999
 #port_emi = 8000
@@ -175,5 +175,5 @@ if __name__ == '__main__':
 
 		p_ui.terminate()
 		p_emi.terminate()
-		time.sleep(60)
+		time.sleep(300)
 		

@@ -119,7 +119,7 @@ def readUI_u(q,q_emi):
 					#print("ui_emi 2 pipe")
 			else:
 				print("fail to get u......i........")
-			#print data.shape[0]
+			print data
 			#print "finish writing"
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
@@ -137,21 +137,18 @@ if __name__ == '__main__':
 	s = socket(AF_INET, SOCK_STREAM)
 	#Process(target = testSoc, args = (s, addr,)).start()
 	
-	while 1:
-		while os.system("ping -c 1 " + host) == 0:
-			print "The server is down, let take a rest for 30 sec"
-			time.sleep(60)
-		q = Queue()
-		q_emi = Queue()
-		p_ui = Process(target = readUI_u, args = (q, q_emi,))
-		p_emi = Process(target = readEMI, args = (q_emi,))
-		p_send = Process(target = send, args = (q,s,addr,))
-		p_send.start()
-		p_ui.start()
-		p_emi.start()
-		p_send.join()
-		p_ui.terminate()
-		p_emi.terminate()
+	q = Queue()
+	q_emi = Queue()
+	p_ui = Process(target = readUI_u, args = (q, q_emi,))
+	p_emi = Process(target = readEMI, args = (q_emi,))
+	p_send = Process(target = send, args = (q,s,addr,))
+	p_send.start()
+	p_ui.start()
+	p_emi.start()
+	p_send.join()
+	p_ui.terminate()
+	p_emi.terminate()
+		
 		
 
 		
