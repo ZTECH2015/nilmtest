@@ -6,6 +6,7 @@ import Adafruit_BBIO.UART as UART
 import beaglebone_pru_adc as adc
 import serial
 from multiprocessing import Process, Queue
+from select import select
 #from timeout import timeout
 
 # Set up zooming coefficient
@@ -55,10 +56,12 @@ def clean_data(data):
 	new_data.append(data[-1])
 	return new_data
 		
-def send(q,s,addr):
+def send(q,addr):
 	try:
+		s = socket(AF_INET, SOCK_STREAM)
 		s.connect(addr)
 		#counter = 0
+		print "open socket"
 		while 1:
 			start0 = time.time()
 			data = clean_data(q.get(True))
@@ -70,9 +73,14 @@ def send(q,s,addr):
 				time.sleep(0.2)
 			else:
 				print("send fail consume...................", time.time()-start0)
+			
 	except:
-		return 1
-		
+		pass
+	try:
+		s.close()
+		print "socket is close"
+	except:
+		pass
 
 def readEMI(q_emi):
 	UART.setup("UART1")
@@ -124,6 +132,13 @@ def readUI_u(q,q_emi):
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
 
+def socVerify(s):
+	readable, writable, exceptional = select([s],[],[], 0)
+	print writable
+	if readable:
+		return 1
+	else:
+		return 0
 def testSoc(s,addr):
 	while(1):
 		if(s.sendto(pickle.dumps(np.random.random(10)),addr)):
@@ -134,25 +149,31 @@ if __name__ == '__main__':
 	# Create socket
 	#s = socket(AF_INET,SOCK_DGRAM)
 	addr = (host, port)
-	s = socket(AF_INET, SOCK_STREAM)
+	
+	#s = socket(AF_INET, SOCK_STREAM)
 	#Process(target = testSoc, args = (s, addr,)).start()
 	
+	
+
 	while 1:
 		while os.system("ping -c 1 " + host) == 0:
-			print "The server is down, let take a rest for 30 sec"
-			time.sleep(60)
+			print "connect the server fail"
+			time.sleep(1)
 		q = Queue()
 		q_emi = Queue()
+		p_send = Process(target = send, args = (q, addr,))
 		p_ui = Process(target = readUI_u, args = (q, q_emi,))
 		p_emi = Process(target = readEMI, args = (q_emi,))
-		p_send = Process(target = send, args = (q,s,addr,))
 		p_send.start()
 		p_ui.start()
 		p_emi.start()
+		print "connect successfully!!"
+		
 		p_send.join()
+
+		print "fail to connect server! we will try again later!"
+
 		p_ui.terminate()
 		p_emi.terminate()
-		
-
-		
+		time.sleep(60)
 		
