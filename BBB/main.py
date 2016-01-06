@@ -66,7 +66,7 @@ def send(q,s,addr):
 			#if s.sendto(pickle.dumps(data),addr):
 				#print('.')
 				#counter = counter + 1
-				#print("send data consume:", time.time()-start0, "counter is :", counter)
+				print("send data consume:", time.time()-start0, "counter is :", counter)
 				time.sleep(0.2)
 			else:
 				print("send fail consume...................", time.time()-start0)

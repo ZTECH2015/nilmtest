@@ -73,12 +73,11 @@ def send(q,addr):
 				time.sleep(0.2)
 			else:
 				print("send fail consume...................", time.time()-start0)
-			
 	except:
 		pass
 	try:
 		s.close()
-		print "socket is close"
+		print "close the socket"
 	except:
 		pass
 
@@ -158,7 +157,10 @@ if __name__ == '__main__':
 	while 1:
 		while os.system("ping -c 1 " + host) == 0:
 			print "connect the server fail"
-			time.sleep(1)
+			os.system("ifdown wlan0")
+			time.sleep(10)
+			os.system("ifup wlan0")
+			
 		q = Queue()
 		q_emi = Queue()
 		p_send = Process(target = send, args = (q, addr,))
@@ -171,9 +173,9 @@ if __name__ == '__main__':
 		
 		p_send.join()
 
-		print "fail to connect server! we will try again later!"
+		print "fail to connect server socket! we will try again later!"
 
 		p_ui.terminate()
 		p_emi.terminate()
-		time.sleep(300)
+		time.sleep(120)
 		
