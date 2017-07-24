@@ -19,32 +19,17 @@ from multiprocessing import Process, Queue
 #print "current_zoom", current_zoom
 
 # Set the socket parameters
-host = '104.194.113.209'
+host_test = "127.0.0.1"
+host = '104.194.126.108'
 #host = '104.194.113.208'
 host_qb = '10.221.33.195'
-port_ui = 9999
-port_emi = 8000
+port = 9999
+#port_emi = 8000
 
 
 
 #the number of sample UI
 num_ui = 1000
-
-
-def readUI(q):
-	capture = adc.Capture()
-	capture.cap_delay = 10000
-	capture.start()
-	while(1):
-		data = np.empty([num_ui+1,2])
-		data[num_ui,0] = time.time()
-		for i in range(num_ui):
-			data[i] = capture.values[:2]
-			#print capture.timer
-			time.sleep(0.00002)
-		data[num_ui,1]=time.time()
-		print data[num_ui,1]- data[num_ui,0]
-		q.put(data)
 
 def send(q,s,addr):
 	counter = 0
@@ -60,35 +45,23 @@ def send(q,s,addr):
 		else:
 			print("send fail consume...................", time.time()-start0)
 		
-		#s.send(pickle.dumps(data, protocol = -1))
-		#s.settimeout(0.2)
-		#print(data)
-		#time.sleep(0.18)
 		
 
-def readEMI(q):
+def readEMI(q_emi):
 	UART.setup("UART1")
 	ser = serial.Serial(port = "/dev/ttyO1", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
-	iter = 0
-	data_s = []
+	
 	if ser.isOpen():
 		while(1):
-			#iter = iter + 1
 			ser.write('1')
-			#data = ser.read(4096)
 			data = ser.read(4096)
 			if len(data) == 4096:
 				data = 20*np.log10(1000*np.fromstring(data, dtype = np.float32)/2048)
-				data_s.append(data)
-				data_s.append(time.time())
-				q.put(data_s)
-				data_s = []
-				#if iter == 1:
-					#q.put(data)
-					#iter = 0
-					#data_s = []
+				q_emi.put(1)
+				q_emi.put(data)
+				emi_ready = 1
 			else:
 				print("fail to get emi")
 			#print data.shape[0]
@@ -96,29 +69,27 @@ def readEMI(q):
 			#send2Server_emi(ser.read(4096))
 			#print("send EMI consume:", time.time()-start)
 
-def readUI_u(q):
+def readUI_u(q,q_emi):
 	UART.setup("UART4")
 	ser = serial.Serial(port = "/dev/ttyO4", baudrate=460800, timeout = 1)
 	ser.close()
 	ser.open()
-	iter = 0
 	data_s = []
 	if ser.isOpen():
 		while(1):
-			iter = iter+1
 			ser.write('1')
 			data = ser.read(276)
 			if len(data) == 276:
 				data = np.fromstring(data, dtype = np.float32)
 				data_s.append(data)
-				data_s.append(time.time())
-			#print(len(data))
-			#print(data)
-				if iter == 4:
+				if len(data_s) == 4:
+					while q_emi.get(True) != 1:
+						time.sleep(0.1)
+					data_s.append(q_emi.get(True))
+					data_s.append(time.time())
 					q.put(data_s)
 					data_s = []
-					iter = 0
-					#print("ui 2 pipe")
+					#print("ui_emi 2 pipe")
 			else:
 				print("fail to get u......i........")
 			#print data.shape[0]
@@ -136,16 +107,14 @@ def testSoc(s,addr):
 if __name__ == '__main__':
 	# Create socket
 	#s = socket(AF_INET,SOCK_DGRAM)
-	addr = (host, port_ui)
+	addr = (host, port)
 	s = socket(AF_INET, SOCK_STREAM)
-	s.connect((host, port_ui))
-	s1 = socket(AF_INET, SOCK_STREAM)
-	s1.connect((host, port_emi))
+	s.connect((host, port))
 	#Process(target = testSoc, args = (s, addr,)).start()
-	q_ui = Queue()
+	q = Queue()
 	q_emi = Queue()
-	Process(target = send, args = (q_ui,s,addr,)).start()
-	Process(target = send, args = (q_emi,s1,addr,)).start()
-	Process(target = readUI_u, args = (q_ui,)).start()
+	Process(target = send, args = (q,s,addr,)).start()
+	#Process(target = send, args = (q_emi,s1,addr,)).start()
+	Process(target = readUI_u, args = (q, q_emi,)).start()
 	Process(target = readEMI, args = (q_emi,)).start()
 	
